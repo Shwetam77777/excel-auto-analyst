@@ -43,4 +43,5 @@ This app is designed to be deployed instantly on **Streamlit Cloud**.
 4. Click **Deploy**.
 
 ---
-*Created by [Your Name]*
+*Created by Shweta Mishra
+
