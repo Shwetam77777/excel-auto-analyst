@@ -4,6 +4,28 @@
 
 Turn raw Excel/CSV files into interactive dashboards and AI-powered insights instantly—no formulas required.
 
+---
+
+## 📸 Project Demo
+
+### 1. Home & Data Preview
+Upload your file and instantly verify data integrity.
+![Home View](assets/home_data.png)
+
+### 2. Auto-Cleaning Options
+One-click data sanitation (handle missing values, remove duplicates).
+![Cleaning](assets/cleaning_view.png)
+
+### 3. Instant Insights Dashboard
+Automatic generation of KPIs, Distributions, and Split metrics.
+![Dashboard](assets/auto_dashboard.png)
+
+### 4. Custom Report Builder
+Drag-and-drop analysis for specific deep-dives.
+![Custom Report](assets/custom_report.png)
+
+---
+
 ## 🚀 Features
 
 * **📂 Smart Upload:** Supports `.csv` and `.xlsx` files.
