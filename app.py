@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
+from pandasai import SmartDataframe
+from pandasai.llm import BambooLLM, Groq
+import matplotlib.pyplot as plt
 
 # 1. Configuration
 st.set_page_config(
@@ -18,7 +22,7 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Upload Excel/CSV", type=['csv', 'xlsx'])
     
     # Navigation Menu
-    page = st.radio("Navigate to:", ["🏠 Home & Data Cleaning", "📈 Auto-Dashboard", "🎨 Custom Analysis"])
+    page = st.radio("Navigate to:", ["🏠 Home & Data Cleaning", "📈 Auto-Dashboard", "🎨 Custom Analysis", "🗣️ Chat with Data"])
     
     st.info("Built with Streamlit & Python")
 
@@ -194,6 +198,48 @@ if uploaded_file is not None:
                     """
                     st.info(insight)
                     
+            else:
+                st.warning("Please go to the Home tab and check 'Enable Auto-Cleaning' first.")
+
+        # --- PAGE 4: CHAT WITH DATA (GEN-AI) ---
+        elif page == "🗣️ Chat with Data":
+            st.title("🗣️ Chat with your Data")
+            st.markdown("ask questions in plain English and let AI generate insights & charts.")
+
+            if 'df_cleaned' in st.session_state:
+                df_active = st.session_state['df_cleaned']
+
+                # API Key Input
+                with st.expander("🔑 Setup: Enter LLM API Key", expanded=True):
+                    st.info("Get your Free API Key from [Groq Cloud](https://console.groq.com/keys).")
+                    groq_key = st.text_input("Groq API Key", type="password", help="The system uses Llama3-70b for fast analysis.")
+                
+                if groq_key:
+                    # Initialize LLM
+                    try:
+                        llm = Groq(api_key=groq_key, model="llama3-70b-8192")
+                        sdf = SmartDataframe(df_active, config={"llm": llm})
+                        
+                        # Chat Interface
+                        prompt = st.chat_input("Ask something (e.g., 'Plot top 5 sales by region')")
+                        
+                        if prompt:
+                            with st.spinner("🤖 Thinking..."):
+                                result = sdf.chat(prompt)
+                                
+                                st.write("**Answer:**")
+                                st.write(result)
+                                
+                                # PandasAI usually returns a path to a chart if generated
+                                # For Streamlit, it renders automatically if it's an image path, but we can double check
+                                if isinstance(result, str) and result.endswith(".png"):
+                                    st.image(result)
+                                    
+                    except Exception as e:
+                        st.error(f"Error initializing AI: {e}")
+                else:
+                    st.warning("⚠️ Please enter a valid API Key to start chatting.")
+            
             else:
                 st.warning("Please go to the Home tab and check 'Enable Auto-Cleaning' first.")
 

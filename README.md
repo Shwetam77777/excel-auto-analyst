@@ -33,6 +33,7 @@ Drag-and-drop analysis for specific deep-dives.
 * **📈 Instant Dashboards:** Automatically generates KPI cards, Bar Charts, and Pie Charts based on data types.
 * **🎨 Custom Reports:** "Drag-and-drop" style interface to build your own comparison charts.
 * **🤖 AI Insights:** Logic-based narrative engine that explains trends and volatility in plain English.
+* **🗣️ Chat with Data:** Ask questions in plain English (e.g., "Show me sales by region") powered by **Llama3** via **Groq**.
 
 ## 🛠️ Tech Stack
 
@@ -40,6 +41,7 @@ Drag-and-drop analysis for specific deep-dives.
 * **Streamlit:** UI/Web Framework
 * **Pandas:** Data Processing Engine
 * **Plotly:** Interactive Visualizations
+* **PandasAI & Groq:** Generative AI Engine
 
 ## 📦 How to Run Locally
 
