@@ -9,6 +9,7 @@ from io import StringIO
 from contextlib import redirect_stdout
 
 # 1. Configuration
+# Version: 2.0.1 - Chat with Data (No external dependencies)
 st.set_page_config(
     page_title="Excel Auto-Analyst", 
     page_icon="📊", 
