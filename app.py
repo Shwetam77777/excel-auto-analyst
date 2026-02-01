@@ -209,11 +209,16 @@ if uploaded_file is not None:
             if 'df_cleaned' in st.session_state:
                 df_active = st.session_state['df_cleaned']
 
-                # API Key Input
-                with st.expander("🔑 Setup: Enter LLM API Key", expanded=True):
-                    st.info("Get your Free API Key from [Groq Cloud](https://console.groq.com/keys).")
-                    groq_key = st.text_input("Groq API Key", type="password", help="The system uses Llama3-70b for fast analysis.")
-                
+                # API Key Handling: Check Secrets first, then Fallback to Input
+                try:
+                    # Try to retrieve from Streamlit Secrets (for Cloud Deployment)
+                    groq_key = st.secrets["GROQ_API_KEY"]
+                except (FileNotFoundError, KeyError):
+                    # If not found, ask user for input
+                    with st.expander("🔑 Setup: Enter LLM API Key", expanded=True):
+                        st.info("Get your Free API Key from [Groq Cloud](https://console.groq.com/keys).")
+                        groq_key = st.text_input("Groq API Key", type="password", help="The system uses Llama3-70b for fast analysis.")
+
                 if groq_key:
                     # Initialize LLM
                     try:
