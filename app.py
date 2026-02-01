@@ -4,6 +4,9 @@ import plotly.express as px
 import os
 from groq import Groq
 import matplotlib.pyplot as plt
+import sys
+from io import StringIO
+from contextlib import redirect_stdout
 
 # 1. Configuration
 st.set_page_config(
@@ -223,72 +226,88 @@ if uploaded_file is not None:
                     try:
                         client = Groq(api_key=groq_key)
                         
+                        # Connection Status
+                        st.success("✅ AI Connected & Ready")
+                        
+                        # Initialize Chat History
+                        if "messages" not in st.session_state:
+                            st.session_state.messages = []
+
+                        # Display History
+                        for message in st.session_state.messages:
+                            with st.chat_message(message["role"]):
+                                st.markdown(message["content"])
+
                         # Chat Interface
-                        st.subheader("🤖 Ask your data anything")
                         prompt = st.chat_input("Ask something (e.g., 'Plot top 5 sales by region')")
                         
                         if prompt:
-                            with st.spinner("🤖 Thinking & Coding..."):
-                                # 1. Prepare Context for LLM
-                                columns = list(df_active.columns)
-                                head_data = df_active.head(3).to_markdown()
-                                
-                                system_prompt = f"""
-                                You are a Python Data Analyst. Your goal is to answer questions about a dataset.
-                                You have a pandas DataFrame named 'df'.
-                                
-                                Columns: {columns}
-                                Sample Data:
-                                {head_data}
+                            # 1. User Message
+                            st.session_state.messages.append({"role": "user", "content": prompt})
+                            with st.chat_message("user"):
+                                st.markdown(prompt)
 
-                                RULES:
-                                1. If the user asks for a specific value (e.g., "Total Sales"), print it.
-                                2. If the user asks for a chart, ignore missing values and create a Plotly Express chart `fig`.
-                                3. DO NOT use plt.show(). Just create the figure object `fig`.
-                                4. Return ONLY valid Python code inside a code block ```python ... ```.
-                                5. Import necessary libraries (pandas as pd, plotly.express as px) inside the code.
-                                """
-                                
-                                response = client.chat.completions.create(
-                                    messages=[
-                                        {"role": "system", "content": system_prompt},
-                                        {"role": "user", "content": prompt}
-                                    ],
-                                    model="llama3-70b-8192",
-                                )
-                                
-                                # 2. Extract Python Code
-                                raw_response = response.choices[0].message.content
-                                # Logic to parse code between ```python and ```
-                                try:
-                                    if "```python" in raw_response:
-                                        code = raw_response.split("```python")[1].split("```")[0].strip()
-                                    elif "```" in raw_response:
-                                        code = raw_response.split("```")[1].split("```")[0].strip()
-                                    else:
-                                        code = raw_response
+                            # 2. Assistant Logic
+                            with st.chat_message("assistant"):
+                                with st.spinner("🤖 Thinking & Coding..."):
+                                    columns = list(df_active.columns)
+                                    head_data = df_active.head(3).to_markdown()
                                     
-                                    # 3. Execute Code Safely
-                                    # Create a local scope with 'df' available
+                                    system_prompt = f"""
+                                    You are a Python Data Analyst. Your goal is to answer questions about a pandas DataFrame 'df'.
+                                    Columns: {columns}
+                                    Sample: {head_data}
+                                    
+                                    RULES:
+                                    1. If asked for value (e.g. "Total Sales"), use `print()` to output it.
+                                    2. If asked for plot, create Plotly fig `fig`.
+                                    3. Return ONLY valid Python code inside ```python``` block.
+                                    4. Import pandas as pd, plotly.express as px.
+                                    """
+                                    
+                                    response = client.chat.completions.create(
+                                        messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+                                        model="llama3-70b-8192",
+                                    )
+                                    
+                                    raw_content = response.choices[0].message.content
+                                    
+                                    # Extract Code
+                                    code = raw_content
+                                    if "```python" in raw_content:
+                                        code = raw_content.split("```python")[1].split("```")[0].strip()
+                                    elif "```" in raw_content:
+                                        code = raw_content.split("```")[1].split("```")[0].strip()
+                                    
+                                    # Execution & Capture
                                     local_scope = {"df": df_active, "pd": pd, "px": px}
-                                    exec(code, {}, local_scope)
+                                    output_buffer = StringIO()
                                     
-                                    # 4. Display Result
-                                    # Check if a figure 'fig' was created
-                                    if "fig" in local_scope:
-                                        st.plotly_chart(local_scope["fig"], use_container_width=True)
-                                    else:
-                                        # Capture printed output using a trick or just checking variables is hard for print statements
-                                        # For simplicity in v1, we rely on the code setting a variable or just running.
-                                        # Advanced: redirect stdout to capture print()
-                                        st.write("✅ Analysis executed.")
-                                    
-                                    with st.expander("Show Generated Code"):
-                                        st.code(code, language='python')
+                                    try:
+                                        with redirect_stdout(output_buffer):
+                                            exec(code, {}, local_scope)
                                         
-                                except Exception as e:
-                                    st.error(f"Error executing AI code: {e}")
-                                    st.write("Raw Response:", raw_response)
+                                        output_text = output_buffer.getvalue()
+                                        
+                                        # Display Output
+                                        if output_text:
+                                            st.markdown(output_text)
+                                            # Append text result to history
+                                            st.session_state.messages.append({"role": "assistant", "content": output_text})
+
+                                        if "fig" in local_scope:
+                                            st.plotly_chart(local_scope["fig"], use_container_width=True)
+                                            # Note: We can't easily persist plots in session_state messages list without serialization
+                                            st.session_state.messages.append({"role": "assistant", "content": "(Chart Generated)"})
+                                        
+                                        if not output_text and "fig" not in local_scope:
+                                            st.warning("Query ran but produced no output. Try asking to 'print' the answer.")
+
+                                        with st.expander("See Code"):
+                                            st.code(code, language='python')
+
+                                    except Exception as e:
+                                        st.error(f"Code Execution Error: {e}")
                                     
                     except Exception as e:
                         st.error(f"Error initializing AI: {e}")
