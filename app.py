@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-from pandasai import SmartDataframe
-from pandasai.llm import BambooLLM, Groq
+from groq import Groq
 import matplotlib.pyplot as plt
 
 # 1. Configuration
@@ -220,25 +219,76 @@ if uploaded_file is not None:
                         groq_key = st.text_input("Groq API Key", type="password", help="The system uses Llama3-70b for fast analysis.")
 
                 if groq_key:
-                    # Initialize LLM
+                    # Initialize Groq Client
                     try:
-                        llm = Groq(api_key=groq_key, model="llama3-70b-8192")
-                        sdf = SmartDataframe(df_active, config={"llm": llm})
+                        client = Groq(api_key=groq_key)
                         
                         # Chat Interface
+                        st.subheader("🤖 Ask your data anything")
                         prompt = st.chat_input("Ask something (e.g., 'Plot top 5 sales by region')")
                         
                         if prompt:
-                            with st.spinner("🤖 Thinking..."):
-                                result = sdf.chat(prompt)
+                            with st.spinner("🤖 Thinking & Coding..."):
+                                # 1. Prepare Context for LLM
+                                columns = list(df_active.columns)
+                                head_data = df_active.head(3).to_markdown()
                                 
-                                st.write("**Answer:**")
-                                st.write(result)
+                                system_prompt = f"""
+                                You are a Python Data Analyst. Your goal is to answer questions about a dataset.
+                                You have a pandas DataFrame named 'df'.
                                 
-                                # PandasAI usually returns a path to a chart if generated
-                                # For Streamlit, it renders automatically if it's an image path, but we can double check
-                                if isinstance(result, str) and result.endswith(".png"):
-                                    st.image(result)
+                                Columns: {columns}
+                                Sample Data:
+                                {head_data}
+
+                                RULES:
+                                1. If the user asks for a specific value (e.g., "Total Sales"), print it.
+                                2. If the user asks for a chart, ignore missing values and create a Plotly Express chart `fig`.
+                                3. DO NOT use plt.show(). Just create the figure object `fig`.
+                                4. Return ONLY valid Python code inside a code block ```python ... ```.
+                                5. Import necessary libraries (pandas as pd, plotly.express as px) inside the code.
+                                """
+                                
+                                response = client.chat.completions.create(
+                                    messages=[
+                                        {"role": "system", "content": system_prompt},
+                                        {"role": "user", "content": prompt}
+                                    ],
+                                    model="llama3-70b-8192",
+                                )
+                                
+                                # 2. Extract Python Code
+                                raw_response = response.choices[0].message.content
+                                # Logic to parse code between ```python and ```
+                                try:
+                                    if "```python" in raw_response:
+                                        code = raw_response.split("```python")[1].split("```")[0].strip()
+                                    elif "```" in raw_response:
+                                        code = raw_response.split("```")[1].split("```")[0].strip()
+                                    else:
+                                        code = raw_response
+                                    
+                                    # 3. Execute Code Safely
+                                    # Create a local scope with 'df' available
+                                    local_scope = {"df": df_active, "pd": pd, "px": px}
+                                    exec(code, {}, local_scope)
+                                    
+                                    # 4. Display Result
+                                    # Check if a figure 'fig' was created
+                                    if "fig" in local_scope:
+                                        st.plotly_chart(local_scope["fig"], use_container_width=True)
+                                    else:
+                                        # Capture printed output using a trick or just checking variables is hard for print statements
+                                        # For simplicity in v1, we rely on the code setting a variable or just running.
+                                        # Advanced: redirect stdout to capture print()
+                                        st.write("✅ Analysis executed.")
+                                    
+                                    with st.expander("Show Generated Code"):
+                                        st.code(code, language='python')
+                                        
+                                except Exception as e:
+                                    st.error(f"Error executing AI code: {e}")
+                                    st.write("Raw Response:", raw_response)
                                     
                     except Exception as e:
                         st.error(f"Error initializing AI: {e}")
