@@ -251,7 +251,7 @@ if uploaded_file is not None:
                             with st.chat_message("assistant"):
                                 with st.spinner("🤖 Thinking & Coding..."):
                                     columns = list(df_active.columns)
-                                    head_data = df_active.head(3).to_markdown()
+                                    head_data = df_active.head(3).to_string()
                                     
                                     system_prompt = f"""
                                     You are a Python Data Analyst. Your goal is to answer questions about a pandas DataFrame 'df'.
