@@ -328,5 +328,3 @@ else:
     2. **Visualize** trends with instant dashboards.
     3. **Analyze** custom relationships with AI-powered summaries.
     """) 
-
-
